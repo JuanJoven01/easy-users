@@ -24,6 +24,7 @@ def _send_email(activation_code, email):
     Send an email with the activation code to the specified email address.
     needs to get installed the module Discuss !important
     """
+    default_sender_email = request.env['ir.config_parameter'].sudo().get_param('default_sender_email')
     # makes the mail body in mail.mail
     mail_obj = request.env['mail.mail'].sudo().create({
         'subject': 'Your Activation Code',
@@ -34,7 +35,7 @@ def _send_email(activation_code, email):
             <p>Thank you!</p>
         """,
         'email_to': email,
-        'email_from': 'no-reply@juanjoven.dev',  
+        'email_from': default_sender_email,  
     })
     mail_obj.send()
 class EasyUsers(http.Controller):
@@ -61,13 +62,14 @@ class EasyUsers(http.Controller):
                 'error': 'Repeated email',
                 'message': 'The Email is already registered'
                 }
+            easy_apps_group_id = request.env['ir.config_parameter'].sudo().get_param('easy_app_group_id') #gets the default groups id
             # Create the user
             new_user = request.env['res.users'].sudo().create({
                 'name': name,
                 'login': email,
                 'password': password,
                 'active': False, # default until activate the email
-                'groups_id': [(4, 12)],  # Add the user at the group ID 12 (easy_apps), the code 4 ensure do not remove any register
+                'groups_id': [(4, easy_apps_group_id)],  # Add the user at the group ID (easy_apps), the code 4 ensure do not remove any register
             })
 
             code = _generate_code(new_user.id)
