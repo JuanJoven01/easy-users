@@ -14,25 +14,33 @@ class EasyUsers(http.Controller):
 
             if not email or not name or not password:
                 return {
-                'error': 'Data requerida no completa',
-                'message': 'Los campos email, name y password son obligatorios'
-            }
-
+                'error': 'Insufficient data',
+                'message': 'Fields email, name and password are required'
+                }
+            #verify if email already exist
+            user = request.env['res.users'].sudo().search([('login', '=', email)], limit=1)
+            if user:
+                return {
+                'error': 'Repeated email',
+                'message': 'The Email is already registred'
+                }
             # Create the user
-            user = request.env['res.users'].sudo().create({
+            new_user = request.env['res.users'].sudo().create({
                 'name': name,
                 'login': email,
                 'password': password,
+                'active': False, # default until activate the email
                 'groups_id': [(4, 12)],  # Add the user at the group ID 12 (easy_apps), the code 4 ensure do not remove any register
             })
 
             return {
                 'success': True,
                 'message': 'Usuario creado exitosamente',
-                'user_id': user.id,
+                'user_id': new_user.id,
             }
         except Exception as e:
             return {
                 'error': str(e),
                 'message': 'Hubo un problema al crear el usuario'
             }
+        oo
