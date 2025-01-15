@@ -12,6 +12,15 @@ def _generate_code(user_id, length=6):
     }) 
     return user.read()[0]['activation_code']
 
+def _regenerate_code(user_id, length=6):
+    """
+    Generate a random alphanumeric code of the given length and saves that on table
+    """
+    code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+    user = request.env['easy_user.activation_code'].sudo().search([('user_id', '=', user_id)])
+    user.sudo.write({'activation_code': code}) 
+    return user.read()[0]['activation_code']
+
 def _send_email(activation_code, email):
     """
     Send an email with the activation code to the specified email address.
@@ -78,7 +87,7 @@ class EasyUsers(http.Controller):
                 'message': 'Error creating the user'
             }
     @http.route('/api/easy_apps/users/validate_code', methods=['POST'], type='jsonrpc', auth='public')
-    def create_easy_user(self, **kwargs):
+    def validate_code(self, **kwargs):
         """
         Endpoint to activate the user when that verify the mail.
         """ 
@@ -86,6 +95,11 @@ class EasyUsers(http.Controller):
             # get the requested data
             email = kwargs.get('email')
             code = kwargs.get('code')
+            if not email or not code:
+                return {
+                'error': 'Insufficient data',
+                'message': 'Fields email and code are required'
+                }
             user = request.env['res.users'].sudo().search([('login', '=', email), '|', ('active', '=', True), ('active', '=', False)], limit=1)
             if not user:
                 return {
@@ -111,6 +125,37 @@ class EasyUsers(http.Controller):
                 return {
                     'error': 'Invalid activation code',
                     'message': 'The provided activation code is incorrect.'
+                }
+        except Exception as e:
+            return {
+                'error': str(e),
+                'message': 'Error validating the user'
+            }
+    @http.route('/api/easy_apps/users/resend_code', methods=['POST'], type='jsonrpc', auth='public')
+    def resend_code(self, **kwargs):
+        """
+        Endpoint to resend code verify the mail, when the code is expired.
+        """ 
+        try:
+            # get the requested data
+            email = kwargs.get('email')
+            if not email:
+                return {
+                    'error': 'Insufficient data',
+                    'message': 'Fields email are required'
+                }
+            user = request.env['res.users'].sudo().search([('login', '=', email), '|', ('active', '=', True), ('active', '=', False)], limit=1)
+            if not user:
+                return {
+                'error': 'Email not exist',
+                'message': 'The Email not registered yet'
+                }
+            user_id = user.id
+            generated_code = _regenerate_code(user_id)
+            _send_email(generated_code, user.login)
+            return {
+                    'success': True,
+                    'message': 'Email sended.'
                 }
         except Exception as e:
             return {
