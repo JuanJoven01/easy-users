@@ -1,6 +1,6 @@
 from odoo import http
 from odoo.http import request
-import random, string
+import random, string, datetime
 def _generate_code(user_id, length=6):
     """
     Generate a random alphanumeric code of the given length and saves that on table
@@ -11,13 +11,6 @@ def _generate_code(user_id, length=6):
             'activation_code' : code
     }) 
     return user.read()[0]['activation_code']
-
-def _verify_code(code, user_id):
-    """
-    Verify the activation code and activate the user if correct.
-    """
-    user = request.env['easy_user.activation_code'].sudo().search([('user_id', '=', user_id)], limit=1)
-    return True
 
 def _send_email(activation_code, email):
     """
@@ -84,4 +77,43 @@ class EasyUsers(http.Controller):
                 'error': str(e),
                 'message': 'Error creating the user'
             }
-        oo
+    @http.route('/api/easy_apps/users/validate_code', methods=['POST'], type='jsonrpc', auth='public')
+    def create_easy_user(self, **kwargs):
+        """
+        Endpoint to activate the user when that verify the mail.
+        """ 
+        try:
+            # get the requested data
+            email = kwargs.get('email')
+            code = kwargs.get('code')
+            user = request.env['res.users'].sudo().search([('login', '=', email), '|', ('active', '=', True), ('active', '=', False)], limit=1)
+            if not user:
+                return {
+                'error': 'Email not exist',
+                'message': 'The Email not registered yet'
+                }
+            user_id = user.id
+            code_row = request.env['easy_user.activation_code'].sudo().search([('user_id', '=', user_id)], limit=1)
+            now = datetime.datetime.now()
+            code_time = datetime.datetime.strptime(code_row.write_date, "%Y-%m-%d %H:%M:%S.%f")
+            if (now - code_time.timestamp()) > 7200:
+                return {
+                    'error': 'Expired code',
+                    'message': 'The code was expired, please try resend that'
+                }
+            if code_row.activation_code == code:
+                user.sudo().write({'active': True})
+                return {
+                    'success': True,
+                    'message': 'User has been successfully activated.'
+                }
+            else:
+                return {
+                    'error': 'Invalid activation code',
+                    'message': 'The provided activation code is incorrect.'
+                }
+        except Exception as e:
+            return {
+                'error': str(e),
+                'message': 'Error validating the user'
+            }
