@@ -1,6 +1,8 @@
 from odoo import http
 from odoo.http import request
 import random, string, datetime
+import logging
+_logger = logging.getLogger(__name__)
 def _generate_code(user_id, length=6):
     """
     Generate a random alphanumeric code of the given length and saves that on table
@@ -82,6 +84,7 @@ class EasyUsers(http.Controller):
                 'user_id': new_user.id,
             }
         except Exception as e:
+            _logger.error(str(e))
             return {
                 'error': str(e),
                 'message': 'Error creating the user'
@@ -109,8 +112,10 @@ class EasyUsers(http.Controller):
             user_id = user.id
             code_row = request.env['easy_user.activation_code'].sudo().search([('user_id', '=', user_id)], limit=1)
             now = datetime.datetime.now()
-            code_time = datetime.datetime.strptime(code_row.write_date, "%Y-%m-%d %H:%M:%S.%f")
-            if (now - code_time.timestamp()) > 7200:
+            code_date = str(code_row.write_date) 
+            code_time = datetime.datetime.strptime(code_date, "%Y-%m-%d %H:%M:%S.%f")
+            two_hours = datetime.timedelta(seconds=7200)
+            if (now - code_time) > two_hours:
                 return {
                     'error': 'Expired code',
                     'message': 'The code was expired, please try resend that'
@@ -127,6 +132,7 @@ class EasyUsers(http.Controller):
                     'message': 'The provided activation code is incorrect.'
                 }
         except Exception as e:
+            _logger.error(str(e))
             return {
                 'error': str(e),
                 'message': 'Error validating the user'
@@ -158,6 +164,7 @@ class EasyUsers(http.Controller):
                     'message': 'Email sended.'
                 }
         except Exception as e:
+            _logger.error(str(e))
             return {
                 'error': str(e),
                 'message': 'Error validating the user'
