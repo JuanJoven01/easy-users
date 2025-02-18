@@ -43,7 +43,7 @@ def _send_email(activation_code, email):
     })
     mail_obj.send()
 class EasyUsers(http.Controller):
-    @http.route('/api/easy_apps/users/new_user', methods=['POST'], type='jsonrpc', auth='public')
+    @http.route('/api/easy_apps/users/new_user', methods=['POST'], type='json', auth='public')
     def create_easy_user(self, **kwargs):
         """
         Endpoint to create users on the group 'easy_apps'.
@@ -71,9 +71,10 @@ class EasyUsers(http.Controller):
             new_user = request.env['res.users'].sudo().create({
                 'name': name,
                 'login': email,
+                'email': email,
                 'password': password,
                 'active': False, # default until activate the email
-                'groups_id': [(4, easy_apps_group_id)],  # Add the user at the group ID (easy_apps), the code 4 ensure do not remove any register
+                'groups_id': [(4, request.env.ref('base.group_portal').id), (4, easy_apps_group_id)],  # Add the user at the group ID (easy_apps), the code 4 ensure do not remove any register
             })
 
             code = _generate_code(new_user.id)
@@ -89,7 +90,7 @@ class EasyUsers(http.Controller):
                 'error': str(e),
                 'message': 'Error creating the user'
             }
-    @http.route('/api/easy_apps/users/validate_code', methods=['POST'], type='jsonrpc', auth='public')
+    @http.route('/api/easy_apps/users/validate_code', methods=['POST'], type='json', auth='public')
     def validate_code(self, **kwargs):
         """
         Endpoint to activate the user when that verify the mail.
@@ -110,6 +111,11 @@ class EasyUsers(http.Controller):
                 'message': 'The Email not registered yet'
                 }
             user_id = user.id
+            if user.active == True:
+                return {
+                    'error': 'Activated',
+                    'message': 'User is already activate'
+                }
             code_row = request.env['easy_user.activation_code'].sudo().search([('user_id', '=', user_id)], limit=1)
             now = datetime.datetime.now()
             code_date = str(code_row.write_date) 
@@ -137,7 +143,7 @@ class EasyUsers(http.Controller):
                 'error': str(e),
                 'message': 'Error validating the user'
             }
-    @http.route('/api/easy_apps/users/resend_code', methods=['POST'], type='jsonrpc', auth='public')
+    @http.route('/api/easy_apps/users/resend_code', methods=['POST'], type='json', auth='public')
     def resend_code(self, **kwargs):
         """
         Endpoint to resend code verify the mail, when the code is expired.
@@ -155,6 +161,11 @@ class EasyUsers(http.Controller):
                 return {
                 'error': 'Email not exist',
                 'message': 'The Email not registered yet'
+                }
+            if user.active == True:
+                return {
+                    'error': 'Activated',
+                    'message': 'User is already activate'
                 }
             user_id = user.id
             generated_code = _regenerate_code(user_id)
