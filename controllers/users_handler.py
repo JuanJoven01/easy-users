@@ -43,7 +43,7 @@ def _send_email(activation_code, email):
     })
     mail_obj.send()
 class EasyUsers(http.Controller):
-    @http.route('/api/easy_apps/users/new_user', methods=['POST'], type='json', auth='public')
+    @http.route('/api/easy_apps/users/new_user', methods=['POST'], type='json', auth='public', csrf=False, cors='*')
     def create_easy_user(self, **kwargs):
         """
         Endpoint to create users on the group 'easy_apps'.
@@ -90,7 +90,7 @@ class EasyUsers(http.Controller):
                 'error': str(e),
                 'message': 'Error creating the user'
             }
-    @http.route('/api/easy_apps/users/validate_code', methods=['POST'], type='json', auth='public')
+    @http.route('/api/easy_apps/users/validate_code', methods=['POST'], type='json', auth='public', csrf=False, cors='*')
     def validate_code(self, **kwargs):
         """
         Endpoint to activate the user when that verify the mail.
@@ -143,7 +143,7 @@ class EasyUsers(http.Controller):
                 'error': str(e),
                 'message': 'Error validating the user'
             }
-    @http.route('/api/easy_apps/users/resend_code', methods=['POST'], type='json', auth='public')
+    @http.route('/api/easy_apps/users/resend_code', methods=['POST'], type='json', auth='public', csrf=False, cors='*')
     def resend_code(self, **kwargs):
         """
         Endpoint to resend code verify the mail, when the code is expired.
